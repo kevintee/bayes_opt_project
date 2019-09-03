@@ -7,6 +7,7 @@ from gaussian_process import GaussianProcess, GaussianCovariance, constant_mean_
 # process variance, length scale, nonzero mean (mean will get more complicated)
 DEFAULT_HPARAMS = numpy.array([.876, .567, -.543])
 DEFAULT_HPARAM_BOUNDS = [[.1, 1], [.01, 1], [-1, 1]]
+DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 100
 
 
 def form_noise_variance_from_simulator(deadhead_simulator):
@@ -26,9 +27,11 @@ def form_gaussian_process_from_hparams(hparams, deadhead_simulator, y=None):
 
 
 # Maybe should make this more general ... right now only works for constant mean, really
-def fit_model_to_data(deadhead_simulator):
+def fit_model_to_data(deadhead_simulator, de_maxiter=None):
   if not deadhead_simulator.num_calls_made:
     return form_gaussian_process_from_hparams(DEFAULT_HPARAMS, deadhead_simulator)
+
+  de_maxiter = de_maxiter or DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER
 
   # Come up with a noise_variance multiplier to attenuate this further?
   # Something better than the "+1" strat to deal with zeros?
@@ -45,7 +48,7 @@ def fit_model_to_data(deadhead_simulator):
     return -(log_hyperprior + log_gaussian_process_likelihood + log_binomial_likelihood)
 
   bounds = numpy.array([[-2, 1]] * deadhead_simulator.num_times + DEFAULT_HPARAM_BOUNDS)
-  result = differential_evolution(func, bounds, maxiter=100)
+  result = differential_evolution(func, bounds, maxiter=de_maxiter)
   y = result.x[:deadhead_simulator.num_times]
   hparams = result.x[deadhead_simulator.num_times:]
   return form_gaussian_process_from_hparams(hparams, deadhead_simulator, y)
@@ -58,11 +61,11 @@ def choose_next_call(gp):
   return gp.x[next_deadhead_time_index]
 
 
-def run_bayesopt(deadhead_simulator, verbose=True):
+def run_bayesopt(deadhead_simulator, verbose=True, de_maxiter=None):
   for call in range(deadhead_simulator.max_calls):
-    gp = fit_model_to_data(deadhead_simulator)
+    gp = fit_model_to_data(deadhead_simulator, de_maxiter=de_maxiter)
     next_deadhead_time = choose_next_call(gp)
     deadhead_simulator.simulate_call(next_deadhead_time)
     if verbose:
       print(f'Iteration {call}, tried {next_deadhead_time}')
-  return fit_model_to_data(deadhead_simulator)
+  return fit_model_to_data(deadhead_simulator, de_maxiter=de_maxiter)

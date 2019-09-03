@@ -55,6 +55,7 @@ class DeadheadSimulator(object):
   def construct_predictions(self, seed=None):
     if self.deadhead_distribution is None:
       raise SimulatorNotPrepared('deadhead_distribution has not been set')
+    self.num_calls_made = 0
     if seed is not None:
       numpy.random.seed(seed)
     uniform_randoms = numpy.random.random((self.num_times, self.max_calls))
@@ -74,7 +75,7 @@ class DeadheadSimulator(object):
     except KeyError as e:
       raise TimeNotRecognized from e
     self.deadhead_times_requested.append(deadhead_time)
-    self.deadhead_time_requests_responses.append(result)
+    self.deadhead_time_requests_responses.append(bool(result))  # Casting for json
     self.deadhead_time_requests_counts[deadhead_time] += 1
     self.num_calls_made += 1
     return result

@@ -30,8 +30,8 @@ class GaussianCovariance(object):
 # This is only going to work in one dimension -- will consider other stuff eventually, maybe
 class GaussianProcess(object):
   def __init__(self, x, y, covariance, mean_function, noise_variance):
-    self.x = x
-    self.y = y
+    self.x = numpy.array(x, dtype=float)
+    self.y = numpy.array(y, dtype=float)  # Casting for json (and to avoid integer issues)
     self.covariance = covariance
     self.mean_function = mean_function
     self.noise_variance = noise_variance
@@ -55,6 +55,14 @@ class GaussianProcess(object):
   @property
   def num_sampled(self):
     return len(self.y)
+
+  @property
+  def process_variance(self):
+    return self.covariance.process_variance
+
+  @property
+  def length_scale(self):
+    return self.covariance.length_scale
 
   def posterior_draws(self, num_draws):
     posterior_mean = self.prior_mean_values + numpy.dot(self.kernel_matrix, self.coef)
