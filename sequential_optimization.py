@@ -71,13 +71,17 @@ def fit_model_to_data(deadhead_simulator, de_maxiter=None):
 
 def choose_next_call(gaussian_process, **kwargs):
   strat = kwargs.get('opt_strat') or DEFAULT_STRAT
+  opt_mc_draws = kwargs.get('opt_mc_draws') or DEFAULT_MC_DRAWS
   if strat == STRAT_THOMPSON_SAMPLING:
     acquisition_function_values = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(1).T)[:, 0]
   elif strat == STRAT_UCB:
     ucb_percentile = kwargs.get('ucb_percentile') or DEFAULT_UCB_PERCENTILE
-    opt_mc_draws = kwargs.get('opt_mc_draws') or DEFAULT_MC_DRAWS
     z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
     acquisition_function_values = numpy.percentile(z_draws, ucb_percentile, axis=1)
+  elif strat == STRAT_EI:
+    z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
+    best_observed_value = numpy.max(gaussian_process.y)
+    acquisition_function_values = numpy.mean(numpy.fmax(z_draws - best_observed_value, 0), axis=1)
   else:
     raise ValueError('Unrecognized optimization strategy')
   return gaussian_process.x[numpy.argmax(acquisition_function_values)]
