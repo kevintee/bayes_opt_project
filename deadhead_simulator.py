@@ -27,8 +27,14 @@ class DeadheadSimulator(object):
     self.deadhead_distribution = None
     self.deadhead_call_predictions = None
     self.deadhead_call_predictions_by_deadhead_time = None
-    self.deadhead_call_results = None
 
+    self.num_calls_made = None
+    self.deadhead_times_requested = None
+    self.deadhead_time_requests_responses = None
+    self.deadhead_time_requests_counts = None
+    self._reset_record()
+
+  def _reset_record(self):
     self.num_calls_made = 0
     self.deadhead_times_requested = []
     self.deadhead_time_requests_responses = []
@@ -63,6 +69,7 @@ class DeadheadSimulator(object):
     self.deadhead_call_predictions_by_deadhead_time = {
       deadhead_time: self.deadhead_call_predictions[k] for k, deadhead_time in enumerate(self.deadhead_times)
     }
+    self._reset_record()
 
   def simulate_call(self, deadhead_time):
     if self.deadhead_call_predictions_by_deadhead_time is None:
