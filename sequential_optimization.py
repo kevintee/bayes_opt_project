@@ -29,12 +29,12 @@ def form_noise_variance_from_simulator(deadhead_simulator):
   return noise_variance
 
 
-def form_gaussian_process_from_hparams(hparams, deadhead_simulator, y=None):
+def form_gaussian_process_from_hparams(hparams, deadhead_simulator, y=None, noise_variance=None):
   length_scale, process_variance, constant_mean = hparams
   y = numpy.zeros_like(deadhead_simulator.deadhead_times) if y is None else y
   covariance = GaussianCovariance(length_scale, process_variance, deadhead_simulator.deadhead_times)
   mean_function = lambda x: constant_mean_function(x, constant_mean)
-  noise_variance = form_noise_variance_from_simulator(deadhead_simulator)
+  noise_variance = form_noise_variance_from_simulator(deadhead_simulator) if noise_variance is None else noise_variance
   return GaussianProcess(covariance.x, y, covariance, mean_function, noise_variance)
 
 
@@ -44,13 +44,19 @@ def fit_model_to_data(deadhead_simulator, de_maxiter=None):
     return form_gaussian_process_from_hparams(DEFAULT_HPARAMS, deadhead_simulator)
 
   de_maxiter = de_maxiter or DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER
+  noise_variance = form_noise_variance_from_simulator(deadhead_simulator)
 
   # Come up with a noise_variance multiplier to attenuate this further?
   # Something better than the "+1" strat to deal with zeros?
   def func(joint_vector):
     y = joint_vector[:deadhead_simulator.num_times]
     hparams = joint_vector[deadhead_simulator.num_times:]
-    gaussian_process = form_gaussian_process_from_hparams(hparams, deadhead_simulator, y)
+    gaussian_process = form_gaussian_process_from_hparams(
+      hparams,
+      deadhead_simulator,
+      y=y,
+      noise_variance=noise_variance,
+    )
     predicted_distribution = norm(loc=0, scale=1).cdf(y)
 
     log_hyperprior = 0  # Eventually could do something cooler
