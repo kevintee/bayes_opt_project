@@ -7,7 +7,19 @@ from gaussian_process import GaussianProcess, GaussianCovariance, constant_mean_
 # process variance, length scale, nonzero mean (mean will get more complicated)
 DEFAULT_HPARAMS = numpy.array([.876, .567, -.543])
 DEFAULT_HPARAM_BOUNDS = [[.1, 1], [.01, 1], [-1, 1]]
-DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 100
+DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 50
+DEFAULT_UCB_PERCENTILE = 75  # The time with the highest value of this percentile gets the next selection
+
+STRAT_THOMPSON_SAMPLING = 'thompson-sampling'
+STRAT_UCB = 'ucb'
+STRAT_KNOWLEDGE_GRADIENT = 'knowledge-gradient'
+STRAT_ENTROPY_SEARCH = 'entropy-search'
+STRAT_EI = 'ei'
+STRAT_NEI = 'nei'
+
+ALL_STRATS = [STRAT_UCB, STRAT_THOMPSON_SAMPLING, STRAT_EI, STRAT_ENTROPY_SEARCH, STRAT_KNOWLEDGE_GRADIENT, STRAT_NEI]
+DEFAULT_STRAT = STRAT_THOMPSON_SAMPLING
+DEFAULT_MC_DRAWS = 1000
 
 
 def form_noise_variance_from_simulator(deadhead_simulator):
@@ -54,17 +66,24 @@ def fit_model_to_data(deadhead_simulator, de_maxiter=None):
   return form_gaussian_process_from_hparams(hparams, deadhead_simulator, y)
 
 
-# Just doing Thompson sampling for right now -- can do better later
-def choose_next_call(gp):
-  z_draws = norm(loc=0, scale=1).cdf(gp.posterior_draws(1).T)
-  next_deadhead_time_index = numpy.argmax(z_draws, axis=0)[0]
-  return gp.x[next_deadhead_time_index]
+def choose_next_call(gaussian_process, **kwargs):
+  strat = kwargs.get('opt_strat') or DEFAULT_STRAT
+  if strat == STRAT_THOMPSON_SAMPLING:
+    acquisition_function_values = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(1).T)[:, 0]
+  elif strat == STRAT_UCB:
+    ucb_percentile = kwargs.get('ucb_percentile') or DEFAULT_UCB_PERCENTILE
+    opt_mc_draws = kwargs.get('opt_mc_draws') or DEFAULT_MC_DRAWS
+    z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
+    acquisition_function_values = numpy.percentile(z_draws, ucb_percentile, axis=1)
+  else:
+    raise ValueError('Unrecognized optimization strategy')
+  return gaussian_process.x[numpy.argmax(acquisition_function_values)]
 
 
-def run_bayesopt(deadhead_simulator, verbose=True, de_maxiter=None):
+def run_bayesopt(deadhead_simulator, verbose=True, de_maxiter=None, **kwargs):
   for call in range(deadhead_simulator.max_calls):
-    gp = fit_model_to_data(deadhead_simulator, de_maxiter=de_maxiter)
-    next_deadhead_time = choose_next_call(gp)
+    gaussian_process = fit_model_to_data(deadhead_simulator, de_maxiter=de_maxiter)
+    next_deadhead_time = choose_next_call(gaussian_process, **kwargs)
     deadhead_simulator.simulate_call(next_deadhead_time)
     if verbose:
       print(f'Iteration {call}, tried {next_deadhead_time}')

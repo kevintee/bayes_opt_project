@@ -5,7 +5,7 @@ import os
 import time
 
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_MEAN, DEFAULT_DEADHEAD_VARIANCE
-from sequential_optimization import run_bayesopt
+from sequential_optimization import run_bayesopt, ALL_STRATS
 
 
 # Some way to structure randomness in the tests?
@@ -20,6 +20,9 @@ def initialize():
   parser.add_argument('--gamma-mean', type=float, required=False, default=DEFAULT_DEADHEAD_MEAN)
   parser.add_argument('--gamma-variance', type=float, required=False, default=DEFAULT_DEADHEAD_VARIANCE)
   parser.add_argument('--de-maxiter', type=int, required=False)
+  parser.add_argument('--opt-strat', type=str, required=False, choices=ALL_STRATS)
+  parser.add_argument('--opt-mc-draws', type=int, required=False)
+  parser.add_argument('--ucb-percentile', type=float, required=False)
   args = parser.parse_args()
 
   return args
@@ -62,6 +65,14 @@ def write_results(output_file, deadhead_simulator, create_file=False, answer=Non
     json.dump(info, f)
 
 
+def form_next_call_kwargs(args):
+  return {
+    'opt_strat': args.opt_strat,
+    'opt_mc_draws': args.opt_mc_draws,
+    'ucb_percentile': args.ucb_percentile,
+  }
+
+
 def main():
   args = initialize()
   output_file = args.output_file or f'{time.time()}_{args.max_calls}.json'
@@ -77,7 +88,12 @@ def main():
     if args.verbosity:
       print(f'\tTrial {k} starting')
     deadhead_simulator.construct_predictions()
-    gaussian_process = run_bayesopt(deadhead_simulator, verbose=args.verbosity > 1, de_maxiter=args.de_maxiter)
+    gaussian_process = run_bayesopt(
+      deadhead_simulator,
+      verbose=args.verbosity > 1,
+      de_maxiter=args.de_maxiter,
+      **form_next_call_kwargs(args),
+    )
     answer = deadhead_simulator.deadhead_times[numpy.argmax(gaussian_process.y)]
     write_results(output_file, deadhead_simulator, answer=answer, gaussian_process=gaussian_process)
     if args.verbosity:
