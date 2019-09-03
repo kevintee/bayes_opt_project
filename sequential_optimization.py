@@ -23,10 +23,7 @@ DEFAULT_MC_DRAWS = 1000
 
 
 def form_noise_variance_from_simulator(deadhead_simulator):
-  noise_variance = numpy.ones_like(deadhead_simulator.deadhead_times, dtype=float)
-  for k, deadhead_time in enumerate(deadhead_simulator.deadhead_times):
-    noise_variance[k] = 1 / (1 + deadhead_simulator.deadhead_time_requests_counts[deadhead_time])
-  return noise_variance
+  return 1 / (1 + deadhead_simulator.deadhead_time_requests_counts)
 
 
 def form_gaussian_process_from_hparams(hparams, deadhead_simulator, y=None, noise_variance=None):

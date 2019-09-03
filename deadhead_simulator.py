@@ -21,24 +21,30 @@ class TimeNotRecognized(KeyError):
 
 class DeadheadSimulator(object):
   def __init__(self, deadhead_times=DEFAULT_DEADHEAD_TIMES, max_calls=DEFAULT_MAX_CALLS):
+    assert len(set(deadhead_times)) == len(deadhead_times), 'Non-unique deadhead times detected'
     self.deadhead_times = numpy.array(deadhead_times)
     self.max_calls = max_calls
+    self.deadhead_time_indexes = dict(zip(self.deadhead_times, range(self.num_times)))
 
     self.deadhead_distribution = None
     self.deadhead_call_predictions = None
     self.deadhead_call_predictions_by_deadhead_time = None
 
     self.num_calls_made = None
+    # A record of what happened in the order it happened
     self.deadhead_times_requested = None
     self.deadhead_time_requests_responses = None
+    # An accumulation of the counts of what occurred, in arrays to match the deadhead times
     self.deadhead_time_requests_counts = None
+    self.deadhead_time_successes_counts = None
     self._reset_record()
 
   def _reset_record(self):
     self.num_calls_made = 0
     self.deadhead_times_requested = []
     self.deadhead_time_requests_responses = []
-    self.deadhead_time_requests_counts = {deadhead_time: 0 for deadhead_time in self.deadhead_times}
+    self.deadhead_time_requests_counts = numpy.zeros_like(self.deadhead_times)
+    self.deadhead_time_successes_counts = numpy.zeros_like(self.deadhead_times)
 
   @property
   def num_times(self):
@@ -83,13 +89,16 @@ class DeadheadSimulator(object):
       raise TimeNotRecognized from e
     self.deadhead_times_requested.append(deadhead_time)
     self.deadhead_time_requests_responses.append(bool(result))  # Casting for json
-    self.deadhead_time_requests_counts[deadhead_time] += 1
+
+    deadhead_time_index = self.deadhead_time_indexes[deadhead_time]
+    self.deadhead_time_requests_counts[deadhead_time_index] += 1
+    self.deadhead_time_successes_counts[deadhead_time_index] += int(result)
     self.num_calls_made += 1
     return result
 
+  # Could be made more efficient by storing data as array rather than dict -- maybe worth considering
   def log_likelihood(self, predicted_distribution):
-    y_dict = dict(zip(self.deadhead_times, predicted_distribution))
-    log_likelihood = 0
-    for bb, tt in zip(self.deadhead_time_requests_responses, self.deadhead_times_requested):
-      log_likelihood += numpy.log(y_dict[tt] if bb else (1 - y_dict[tt]))
-    return log_likelihood
+    return numpy.sum(
+      self.deadhead_time_successes_counts * numpy.log(predicted_distribution) +
+      self.deadhead_time_requests_counts * numpy.log(1 - predicted_distribution)
+    )
