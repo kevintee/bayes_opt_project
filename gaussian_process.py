@@ -38,7 +38,6 @@ class GaussianProcess(object):
 
     self.prior_mean_values = None
     self.kernel_matrix = None
-    self.kernel_matrix_plus_noise = None
     self.cho_kernel = None
     self.coef = None
 
@@ -47,8 +46,7 @@ class GaussianProcess(object):
   def _setup(self):
     self.prior_mean_values = self.mean_function(self.x)
     self.kernel_matrix = self.covariance.evaluate_covariance_given_distance_matrix_squared()
-    self.kernel_matrix_plus_noise = self.kernel_matrix + numpy.diag(self.noise_variance)
-    self.cho_kernel = cho_factor(self.kernel_matrix_plus_noise, lower=True, overwrite_a=False)
+    self.cho_kernel = cho_factor(self.kernel_matrix + numpy.diag(self.noise_variance), lower=True, overwrite_a=True)
     self.y_minus_mean = self.y - self.prior_mean_values
     self.coef = cho_solve(self.cho_kernel, self.y_minus_mean)
 
