@@ -7,7 +7,7 @@ from gaussian_process import GaussianProcess, GaussianCovariance, constant_mean_
 # process variance, length scale, nonzero mean (mean will get more complicated)
 DEFAULT_HPARAMS = numpy.array([.876, .567, -.543])
 DEFAULT_HPARAM_BOUNDS = [[.1, 1], [.01, 1], [-1, 1]]
-DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 50
+DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 16
 DEFAULT_UCB_PERCENTILE = 75  # The time with the highest value of this percentile gets the next selection
 DEFAULT_AEI_PERCENTILE = 55  # The time with the highest value of this percentile is assigned "best seen" status for EI
 
