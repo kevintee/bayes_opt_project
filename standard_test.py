@@ -23,6 +23,7 @@ def initialize():
   parser.add_argument('--opt-strat', type=str, required=False, choices=ALL_STRATS)
   parser.add_argument('--opt-mc-draws', type=int, required=False)
   parser.add_argument('--ucb-percentile', type=float, required=False)
+  parser.add_argument('--aei-percentile', type=float, required=False)
   args = parser.parse_args()
 
   return args
@@ -70,6 +71,7 @@ def form_next_call_kwargs(args):
     'opt_strat': args.opt_strat,
     'opt_mc_draws': args.opt_mc_draws,
     'ucb_percentile': args.ucb_percentile,
+    'aei_percentile': args.aei_percentile,
   }
 
 

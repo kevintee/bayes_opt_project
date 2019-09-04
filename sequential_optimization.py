@@ -9,15 +9,16 @@ DEFAULT_HPARAMS = numpy.array([.876, .567, -.543])
 DEFAULT_HPARAM_BOUNDS = [[.1, 1], [.01, 1], [-1, 1]]
 DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 50
 DEFAULT_UCB_PERCENTILE = 75  # The time with the highest value of this percentile gets the next selection
+DEFAULT_AEI_PERCENTILE = 55  # The time with the highest value of this percentile is assigned "best seen" status for EI
 
 STRAT_THOMPSON_SAMPLING = 'thompson-sampling'
 STRAT_UCB = 'ucb'
 STRAT_KNOWLEDGE_GRADIENT = 'knowledge-gradient'
 STRAT_ENTROPY_SEARCH = 'entropy-search'
 STRAT_EI = 'ei'
-STRAT_NEI = 'nei'
+STRAT_AEI = 'aei'
 
-ALL_STRATS = [STRAT_UCB, STRAT_THOMPSON_SAMPLING, STRAT_EI, STRAT_ENTROPY_SEARCH, STRAT_KNOWLEDGE_GRADIENT, STRAT_NEI]
+ALL_STRATS = [STRAT_UCB, STRAT_THOMPSON_SAMPLING, STRAT_EI, STRAT_ENTROPY_SEARCH, STRAT_KNOWLEDGE_GRADIENT, STRAT_AEI]
 DEFAULT_STRAT = STRAT_THOMPSON_SAMPLING
 DEFAULT_MC_DRAWS = 1000
 
@@ -82,6 +83,17 @@ def choose_next_call(gaussian_process, **kwargs):
     z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
     best_observed_value = numpy.max(gaussian_process.y)
     acquisition_function_values = numpy.mean(numpy.fmax(z_draws - best_observed_value, 0), axis=1)
+  elif strat == STRAT_AEI:
+    aei_percentile = kwargs.get('aei_percentile') or DEFAULT_AEI_PERCENTILE
+    z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
+    best_noisy_observed_value = numpy.max(numpy.percentile(z_draws, aei_percentile, axis=1))
+    z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
+    expected_improvement = numpy.mean(numpy.fmax(z_draws - best_noisy_observed_value, 0), axis=1)
+    z_draws = norm(loc=0, scale=1).cdf(gaussian_process.posterior_draws(opt_mc_draws).T)
+    posterior_variance = numpy.var(z_draws, axis=1)
+    mean_noise_variance = numpy.mean(gaussian_process.noise_variance)
+    penalty = 1 - numpy.sqrt(mean_noise_variance / (posterior_variance + mean_noise_variance))
+    acquisition_function_values = expected_improvement * penalty
   else:
     raise ValueError('Unrecognized optimization strategy')
   return gaussian_process.x[numpy.argmax(acquisition_function_values)]
