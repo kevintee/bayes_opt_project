@@ -1,8 +1,17 @@
 import numpy
+import argparse
 
 from gaussian_process import GaussianProcess, GaussianCovariance, ConstantMean, CInfinityChebyshevCovariance
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_TIMES
 from sequential_optimization import run_bayesopt
+
+
+def initialize():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--fast-only', action='store_true')
+  args = parser.parse_args()
+
+  return args
 
 
 def gaussian_process_test():
@@ -82,9 +91,11 @@ def basic_bayesopt_test():
 
 
 def main():
+  args = initialize()
   gaussian_process_test()
   deadhead_simulator_test()
-  basic_bayesopt_test()
+  if not args.fast_only:
+    basic_bayesopt_test()
 
 
 if __name__ == '__main__':
