@@ -1,6 +1,6 @@
 import numpy
 
-from gaussian_process import GaussianProcess, GaussianCovariance, zero_mean_function, CInfinityChebyshevCovariance
+from gaussian_process import GaussianProcess, GaussianCovariance, ConstantMean, CInfinityChebyshevCovariance
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_TIMES
 from sequential_optimization import run_bayesopt
 
@@ -14,7 +14,7 @@ def gaussian_process_test():
       DEFAULT_DEADHEAD_TIMES,
       true_probabilities,
       covariance,
-      zero_mean_function,
+      ConstantMean(0),
       .543,
       noise_variance,
     )

@@ -3,7 +3,7 @@ from scipy.stats import norm
 from scipy.optimize import differential_evolution
 
 from gaussian_process import (
-  GaussianProcess, GaussianCovariance, constant_mean_function, CInfinityChebyshevCovariance,
+  GaussianProcess, GaussianCovariance, ConstantMean, CInfinityChebyshevCovariance,
   DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE, DEFAULT_CONSTANT_MEAN,
   DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS, DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS,
 )
@@ -46,7 +46,7 @@ def form_gaussian_process_from_hparams(hparams, deadhead_simulator, noise_varian
   covariance_name = kwargs.get('gp_covariance') or DEFAULT_COVARIANCE
   covariance = ALL_COVARIANCES[covariance_name](length_scale)
 
-  mean_function = lambda t: constant_mean_function(t, constant_mean)
+  mean_function = ConstantMean(constant_mean)
   return GaussianProcess(x, y, covariance, mean_function, process_variance, noise_variance)
 
 

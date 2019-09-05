@@ -11,12 +11,19 @@ DEFAULT_PROCESS_VARIANCE = .876
 DEFAULT_CONSTANT_MEAN = -.543
 
 
-def zero_mean_function(x):
-  return numpy.zeros_like(x)
+class ConstantMean(object):
+  def __init__(self, *args, **kwargs):
+    assert len(args) == 1 and len(kwargs) == 0
+    (mean_value, ) = args
+    self.mean_value = mean_value
 
+  def __str__(self):
+    return f'Constant({mean_value})'
 
-def constant_mean_function(x, mean_value):
-  return numpy.full_like(x, mean_value)
+  def __call__(self, *args, **kwargs):
+    assert len(args) == 1 and len(kwargs) == 0
+    (x, ) = args
+    return numpy.full_like(x, self.mean_value)
 
 
 # Could definitely clean this up
