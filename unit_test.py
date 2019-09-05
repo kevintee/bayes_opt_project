@@ -1,37 +1,39 @@
 import numpy
 
-from gaussian_process import GaussianProcess, GaussianCovariance, zero_mean_function
+from gaussian_process import GaussianProcess, GaussianCovariance, zero_mean_function, CInfinityChebyshevCovariance
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_TIMES
 from sequential_optimization import run_bayesopt
 
 
 def gaussian_process_test():
-  covariance = GaussianCovariance(.987, .543, DEFAULT_DEADHEAD_TIMES)
-  true_probabilities = numpy.array([0.26,  0.14,  0.16,  0.38,  0.44,  0.38,  0.26,  0.36])
-  noise_variance = numpy.full_like(true_probabilities, 1e-2)
-  gaussian_process = GaussianProcess(
-    DEFAULT_DEADHEAD_TIMES,
-    true_probabilities,
-    covariance,
-    zero_mean_function,
-    noise_variance,
-  )
-  posterior_draws = gaussian_process.posterior_draws(12)
-  assert posterior_draws.shape == (12, gaussian_process.num_sampled)
+  for CovarianceClass in (GaussianCovariance, CInfinityChebyshevCovariance):
+    covariance = CovarianceClass(.5)
+    true_probabilities = numpy.array([0.26,  0.14,  0.16,  0.38,  0.44,  0.38,  0.26,  0.36])
+    noise_variance = numpy.full_like(true_probabilities, 1e-2)
+    gaussian_process = GaussianProcess(
+      DEFAULT_DEADHEAD_TIMES,
+      true_probabilities,
+      covariance,
+      zero_mean_function,
+      .543,
+      noise_variance,
+    )
+    posterior_draws = gaussian_process.posterior_draws(12)
+    assert posterior_draws.shape == (12, gaussian_process.num_sampled)
 
-  for _ in range(3):
-    posterior_draws = gaussian_process.posterior_draws(1234)
-    mean = numpy.mean(posterior_draws, axis=0)
-    std = numpy.std(posterior_draws, axis=0)
-    lower_bound = mean - 2 * std
-    upper_bound = mean + 2 * std
-    if numpy.all(numpy.logical_and(lower_bound < true_probabilities, true_probabilities < upper_bound)):
-      break
-  else:
-    print(lower_bound)
-    print(true_probabilities)
-    print(upper_bound)
-    raise AssertionError('This should have been okay by now ...')
+    for _ in range(3):
+      posterior_draws = gaussian_process.posterior_draws(1234)
+      mean = numpy.mean(posterior_draws, axis=0)
+      std = numpy.std(posterior_draws, axis=0)
+      lower_bound = mean - 2 * std
+      upper_bound = mean + 2 * std
+      if numpy.all(numpy.logical_and(lower_bound < true_probabilities, true_probabilities < upper_bound)):
+        break
+    else:
+      print(lower_bound)
+      print(true_probabilities)
+      print(upper_bound)
+      raise AssertionError('This should have been okay by now ...')
 
 
 def deadhead_simulator_test():

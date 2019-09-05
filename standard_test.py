@@ -5,7 +5,7 @@ import os
 import time
 
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_MEAN, DEFAULT_DEADHEAD_VARIANCE
-from sequential_optimization import run_bayesopt, ALL_STRATS
+from sequential_optimization import run_bayesopt, ALL_STRATS, ALL_COVARIANCES
 
 
 # Some way to structure randomness in the tests?
@@ -24,6 +24,7 @@ def initialize():
   parser.add_argument('--opt-mc-draws', type=int, required=False)
   parser.add_argument('--ucb-percentile', type=float, required=False)
   parser.add_argument('--aei-percentile', type=float, required=False)
+  parser.add_argument('--gp-covariance', type=str, required=False, choices=ALL_COVARIANCES)
   args = parser.parse_args()
 
   return args
@@ -54,11 +55,7 @@ def write_results(output_file, deadhead_simulator, create_file=False, answer=Non
   if answer is not None:
     new_results['answer'] = float(answer)  # Casting for json
   if gaussian_process is not None:
-    new_results['gaussian_process'] = {
-      'y': gaussian_process.y.tolist(),
-      'process_variance': gaussian_process.process_variance,
-      'length_scale': gaussian_process.length_scale,
-    }
+    new_results['gaussian_process'] = gaussian_process.json_info
 
   info['results'].append(new_results)
 
@@ -68,10 +65,12 @@ def write_results(output_file, deadhead_simulator, create_file=False, answer=Non
 
 def form_next_call_kwargs(args):
   return {
+    'de_maxiter': args.de_maxiter,
     'opt_strat': args.opt_strat,
     'opt_mc_draws': args.opt_mc_draws,
     'ucb_percentile': args.ucb_percentile,
     'aei_percentile': args.aei_percentile,
+    'gp_covariance': args.gp_covariance,
   }
 
 
@@ -93,7 +92,6 @@ def main():
     gaussian_process = run_bayesopt(
       deadhead_simulator,
       verbose=args.verbosity > 1,
-      de_maxiter=args.de_maxiter,
       **form_next_call_kwargs(args),
     )
     answer = deadhead_simulator.deadhead_times[numpy.argmax(gaussian_process.y)]
