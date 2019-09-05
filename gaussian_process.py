@@ -2,7 +2,7 @@ import numpy
 from scipy.linalg import cho_solve, cho_factor, solve_triangular, cholesky
 
 
-DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS = [.0987, 1.23]
+DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS = [.0987, .987]
 DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS = [.0567, .9012]
 DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS = [-1.23, 1.098]
 
