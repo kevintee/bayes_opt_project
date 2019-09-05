@@ -2,11 +2,11 @@ import numpy
 from scipy.stats import norm
 from scipy.optimize import differential_evolution
 
-from gaussian_process import GaussianProcess, GaussianCovariance, constant_mean_function
+from gaussian_process import GaussianProcess, GaussianCovariance, constant_mean_function, CInfinityChebyshevCovariance
 
 # process variance, length scale, nonzero mean (mean will get more complicated)
 DEFAULT_HPARAMS = numpy.array([.876, .567, -.543])
-DEFAULT_HPARAM_BOUNDS = [[.1, 1], [.01, 1], [-1, 1]]
+DEFAULT_HPARAM_BOUNDS = [[.1, 1], [.5, 1], [-1, 1]]
 DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 16
 DEFAULT_UCB_PERCENTILE = 75  # The time with the highest value of this percentile gets the next selection
 DEFAULT_AEI_PERCENTILE = 55  # The time with the highest value of this percentile is assigned "best seen" status for EI
@@ -22,26 +22,32 @@ ALL_STRATS = [STRAT_UCB, STRAT_THOMPSON_SAMPLING, STRAT_EI, STRAT_ENTROPY_SEARCH
 DEFAULT_STRAT = STRAT_THOMPSON_SAMPLING
 DEFAULT_MC_DRAWS = 1000
 
+ALL_COVARIANCES = {x.name: x for x in (GaussianCovariance, CInfinityChebyshevCovariance)}
+DEFAULT_COVARIANCE = GaussianCovariance.name
+
 
 def form_noise_variance_from_simulator(deadhead_simulator):
   return 1 / (1 + deadhead_simulator.deadhead_time_requests_counts)
 
 
-def form_gaussian_process_from_hparams(hparams, deadhead_simulator, y=None, noise_variance=None):
+def form_gaussian_process_from_hparams(hparams, deadhead_simulator, y=None, noise_variance=None, **kwargs):
   length_scale, process_variance, constant_mean = hparams
   y = numpy.zeros_like(deadhead_simulator.deadhead_times) if y is None else y
-  covariance = GaussianCovariance(length_scale, process_variance, deadhead_simulator.deadhead_times)
+
+  covariance_name = kwargs.get('gp_covariance') or DEFAULT_COVARIANCE
+  covariance = ALL_COVARIANCES[covariance_name](length_scale, process_variance)
+
   mean_function = lambda x: constant_mean_function(x, constant_mean)
   noise_variance = form_noise_variance_from_simulator(deadhead_simulator) if noise_variance is None else noise_variance
-  return GaussianProcess(covariance.x, y, covariance, mean_function, noise_variance)
+  return GaussianProcess(deadhead_simulator.deadhead_times, y, covariance, mean_function, noise_variance)
 
 
 # Maybe should make this more general ... right now only works for constant mean, really
-def fit_model_to_data(deadhead_simulator, de_maxiter=None):
+def fit_model_to_data(deadhead_simulator, **kwargs):
   if not deadhead_simulator.num_calls_made:
-    return form_gaussian_process_from_hparams(DEFAULT_HPARAMS, deadhead_simulator)
+    return form_gaussian_process_from_hparams(DEFAULT_HPARAMS, deadhead_simulator, **kwargs)
 
-  de_maxiter = de_maxiter or DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER
+  de_maxiter = kwargs.get('de_maxiter') or DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER
   noise_variance = form_noise_variance_from_simulator(deadhead_simulator)
 
   # Come up with a noise_variance multiplier to attenuate this further?
@@ -49,12 +55,7 @@ def fit_model_to_data(deadhead_simulator, de_maxiter=None):
   def func(joint_vector):
     y = joint_vector[:deadhead_simulator.num_times]
     hparams = joint_vector[deadhead_simulator.num_times:]
-    gaussian_process = form_gaussian_process_from_hparams(
-      hparams,
-      deadhead_simulator,
-      y=y,
-      noise_variance=noise_variance,
-    )
+    gaussian_process = form_gaussian_process_from_hparams(hparams, deadhead_simulator, y, noise_variance, **kwargs)
     predicted_distribution = norm(loc=0, scale=1).cdf(y)
 
     log_hyperprior = 0  # Eventually could do something cooler
@@ -67,7 +68,7 @@ def fit_model_to_data(deadhead_simulator, de_maxiter=None):
   result = differential_evolution(func, bounds, maxiter=de_maxiter)
   y = result.x[:deadhead_simulator.num_times]
   hparams = result.x[deadhead_simulator.num_times:]
-  return form_gaussian_process_from_hparams(hparams, deadhead_simulator, y)
+  return form_gaussian_process_from_hparams(hparams, deadhead_simulator, y, noise_variance, **kwargs)
 
 
 def choose_next_call(gaussian_process, **kwargs):
@@ -99,11 +100,12 @@ def choose_next_call(gaussian_process, **kwargs):
   return gaussian_process.x[numpy.argmax(acquisition_function_values)]
 
 
-def run_bayesopt(deadhead_simulator, verbose=True, de_maxiter=None, **kwargs):
+def run_bayesopt(deadhead_simulator, verbose=True, **kwargs):
   for call in range(deadhead_simulator.max_calls):
-    gaussian_process = fit_model_to_data(deadhead_simulator, de_maxiter=de_maxiter)
+    gaussian_process = fit_model_to_data(deadhead_simulator, **kwargs)
     next_deadhead_time = choose_next_call(gaussian_process, **kwargs)
     deadhead_simulator.simulate_call(next_deadhead_time)
+    draws = gaussian_process.posterior_draws(1000)
     if verbose:
       print(f'Iteration {call}, tried {next_deadhead_time}')
-  return fit_model_to_data(deadhead_simulator, de_maxiter=de_maxiter)
+  return fit_model_to_data(deadhead_simulator, **kwargs)
