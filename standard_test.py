@@ -55,10 +55,7 @@ def write_results(output_file, deadhead_simulator, create_file=False, answer=Non
   if answer is not None:
     new_results['answer'] = float(answer)  # Casting for json
   if gaussian_process is not None:
-    new_results['gaussian_process'] = {
-      'y': gaussian_process.y.tolist(),
-      'covariance': str(gaussian_process.covariance),
-    }
+    new_results['gaussian_process'] = gaussian_process.json_info
 
   info['results'].append(new_results)
 
