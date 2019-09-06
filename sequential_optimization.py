@@ -85,7 +85,6 @@ def fit_model_to_data(deadhead_simulator, **kwargs):
   if not deadhead_simulator.num_calls_made:
     return form_gaussian_process_from_hparams(numpy.zeros(deadhead_simulator.num_times), DEFAULT_COVARIANCE_HPARAMS)
 
-
   def func(joint_vector):
     y = joint_vector[:deadhead_simulator.num_times]
     hparams = joint_vector[deadhead_simulator.num_times:]
@@ -94,9 +93,9 @@ def fit_model_to_data(deadhead_simulator, **kwargs):
 
     log_hyperprior = 0  # Eventually could do something cooler
     log_gaussian_process_likelihood = gaussian_process.compute_log_likelihood()
-    log_binomial_likelihood = deadhead_simulator.log_likelihood(predicted_distribution)
+    log_bernoulli_likelihood = deadhead_simulator.log_likelihood(predicted_distribution)
 
-    return -(log_hyperprior + log_gaussian_process_likelihood + log_binomial_likelihood)
+    return -(log_hyperprior + log_gaussian_process_likelihood + log_bernoulli_likelihood)
 
   bounds = (
     [[-2, 1]] * deadhead_simulator.num_times +  # y bounds
