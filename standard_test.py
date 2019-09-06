@@ -5,7 +5,7 @@ import os
 import time
 
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_MEAN, DEFAULT_DEADHEAD_VARIANCE
-from sequential_optimization import run_bayesopt, ALL_STRATS, ALL_COVARIANCES
+from sequential_optimization import run_bayesopt, ALL_STRATS, ALL_COVARIANCES, ALL_MEAN_FUNCTIONS
 
 
 # Some way to structure randomness in the tests?
@@ -25,6 +25,7 @@ def initialize():
   parser.add_argument('--ucb-percentile', type=float, required=False)
   parser.add_argument('--aei-percentile', type=float, required=False)
   parser.add_argument('--gp-covariance', type=str, required=False, choices=ALL_COVARIANCES)
+  parser.add_argument('--mean-function', type=str, required=False, choices=ALL_MEAN_FUNCTIONS)
   args = parser.parse_args()
 
   return args
@@ -71,6 +72,7 @@ def form_next_call_kwargs(args):
     'ucb_percentile': args.ucb_percentile,
     'aei_percentile': args.aei_percentile,
     'gp_covariance': args.gp_covariance,
+    'mean_function': args.mean_function,
   }
 
 
