@@ -6,20 +6,30 @@ from scipy.stats import norm
 DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS = [.0987, .987]
 DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS = [.0567, .9012]
 DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS = [-1.23, 1.098]
+DEFAULT_BELL_CURVE_LOC_HPARAM_BOUNDS = [3.0, 10.0]
+DEFAULT_BELL_CURVE_SCALE_HPARAM_BOUNDS = [.4321, 4.321]
+DEFAULT_BELL_CURVE_MIN_HPARAM_BOUNDS = [-2.345, -.4321]
+DEFAULT_BELL_CURVE_MAX_HPARAM_BOUNDS = [-.4567, .8765]
 
 DEFAULT_LENGTH_SCALE = .567
 DEFAULT_PROCESS_VARIANCE = .876
-DEFAULT_CONSTANT_MEAN = -.543
+
+DEFAULT_CONSTANT_MEAN_ARGS = (-.543, )
+DEFAULT_FIXED_BELL_CURVE_MEAN_ARGS = (6.5, 1.0)  # In reality, should have domain data to know the loc
+DEFAULT_BELL_CURVE_MEAN_ARGS = (6.5, 1.0, -.85, -.25)
 
 
 class ConstantMean(object):
+  name = 'constant'
+  DEFAULT_HPARAM_BOUNDS = [DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS]
+
   def __init__(self, *args, **kwargs):
-    assert len(args) == 1 and len(kwargs) == 0
-    (mean_value, ) = args
-    self.mean_value = mean_value
+    assert len(args) in (0, 1) and len(kwargs) == 0
+    args = args or DEFAULT_CONSTANT_MEAN_ARGS
+    self.mean_value = args[0]
 
   def __str__(self):
-    return f'Constant({mean_value})'
+    return f'Constant({self.mean_value})'
 
   def __call__(self, *args, **kwargs):
     assert len(args) == 1 and len(kwargs) == 0
@@ -27,14 +37,32 @@ class ConstantMean(object):
     return numpy.full_like(x, self.mean_value)
 
 
-class BellCurveMean(object):
+class ZeroMean(ConstantMean):
+  name = 'zero'
+  DEFAULT_HPARAM_BOUNDS = []
+
   def __init__(self, *args, **kwargs):
-    assert len(args) == 4 and len(kwargs) == 0
-    (loc, scale, min, max) = args
+    assert len(args) == 0 and len(kwargs) == 0
+    super().__init__(0.0)
+
+
+class BellCurveMean(object):
+  name = 'bell-curve'
+  DEFAULT_HPARAM_BOUNDS = [
+    DEFAULT_BELL_CURVE_LOC_HPARAM_BOUNDS,
+    DEFAULT_BELL_CURVE_SCALE_HPARAM_BOUNDS,
+    DEFAULT_BELL_CURVE_MIN_HPARAM_BOUNDS,
+    DEFAULT_BELL_CURVE_MAX_HPARAM_BOUNDS,
+  ]
+
+  def __init__(self, *args, **kwargs):
+    assert len(args) in (0, 4) and len(kwargs) == 0
+    args = args or DEFAULT_BELL_CURVE_MEAN_ARGS
+    (loc, scale, min_val, max_val) = args
     self.loc = loc
     self.scale = scale
-    self.min = min
-    self.max = max
+    self.min = min_val
+    self.max = max_val
 
   def __str__(self):
     return f'BellCurve({self.loc, self.scale, self.min, self.max})'
@@ -47,11 +75,18 @@ class BellCurveMean(object):
 
 # Maybe shouldn't both having this because it requires this knowledge of the transformation externally
 class FixedBellCurveMean(BellCurveMean):
+  name = 'fixed-bell-curve'
+  DEFAULT_HPARAM_BOUNDS = [
+    DEFAULT_BELL_CURVE_LOC_HPARAM_BOUNDS,
+    DEFAULT_BELL_CURVE_SCALE_HPARAM_BOUNDS,
+  ]
+
   def __init__(self, *args, **kwargs):
-    assert len(args) == 2 and len(kwargs) == 0
+    assert len(args) in (0, 2) and len(kwargs) == 0
+    args = args or DEFAULT_FIXED_BELL_CURVE_MEAN_ARGS
     (loc, scale) = args
     min_val, max_val = norm(loc=0, scale=1).ppf([.2, .4])
-    super().__init__(self, loc, scale, min_val, max_val)
+    super().__init__(loc, scale, min_val, max_val)
 
 
 # Could definitely clean this up
@@ -144,7 +179,7 @@ class GaussianProcess(object):
       'covariance': str(self.covariance),
       'noise_variance': self.noise_variance.tolist(),
       'process_variance': float(self.process_variance),
-      'mean_value': float(self.prior_mean_values[0])
+      'mean_function': str(self.mean_function),
     }
 
   @property

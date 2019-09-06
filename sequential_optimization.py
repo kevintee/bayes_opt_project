@@ -3,16 +3,16 @@ from scipy.stats import norm
 from scipy.optimize import differential_evolution
 
 from gaussian_process import (
-  GaussianProcess, GaussianCovariance, ConstantMean, CInfinityChebyshevCovariance,
-  DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE, DEFAULT_CONSTANT_MEAN,
-  DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS, DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS,
+  GaussianProcess, GaussianCovariance, CInfinityChebyshevCovariance,
+  ZeroMean, ConstantMean, BellCurveMean, FixedBellCurveMean,
+  DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE,
+  DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
 )
 
-DEFAULT_HPARAMS = (DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE, DEFAULT_CONSTANT_MEAN)
-DEFAULT_HPARAM_BOUNDS = [
+DEFAULT_COVARIANCE_HPARAMS = (DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE)
+DEFAULT_COVARIANCE_HPARAM_BOUNDS = [
   DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS,
   DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
-  DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS,
 ]
 
 DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 16
@@ -33,37 +33,63 @@ DEFAULT_MC_DRAWS = 1000
 ALL_COVARIANCES = {x.name: x for x in (GaussianCovariance, CInfinityChebyshevCovariance)}
 DEFAULT_COVARIANCE = GaussianCovariance.name
 
+ALL_MEAN_FUNCTIONS = {x.name: x for x in (ZeroMean, ConstantMean, BellCurveMean, FixedBellCurveMean)}
+DEFAULT_MEAN_FUNCTION = ConstantMean.name
 
+
+# Come up with a noise_variance multiplier to attenuate this further?
+# Something better than the "+1" strat to deal with zeros?
 def form_noise_variance_from_simulator(deadhead_simulator):
   return 1 / (1 + deadhead_simulator.deadhead_time_requests_counts)
 
 
-def form_gaussian_process_from_hparams(hparams, deadhead_simulator, noise_variance, y=None, **kwargs):
-  length_scale, process_variance, constant_mean = hparams
+def form_gaussian_process(
+  hparams,
+  deadhead_simulator,
+  y,
+  noise_variance,
+  covariance_class,
+  mean_function_class,
+):
+  length_scale, process_variance, *mean_function_args = hparams
+
   x = deadhead_simulator.deadhead_times
-  y = numpy.zeros_like(x) if y is None else y
+  covariance = covariance_class(length_scale)
+  mean_function = mean_function_class(*mean_function_args)
 
-  covariance_name = kwargs.get('gp_covariance') or DEFAULT_COVARIANCE
-  covariance = ALL_COVARIANCES[covariance_name](length_scale)
-
-  mean_function = ConstantMean(constant_mean)
   return GaussianProcess(x, y, covariance, mean_function, process_variance, noise_variance)
+
+
+def form_map_optimization_bounds(deadhead_simulator, **kwargs):
+  pass
 
 
 # Maybe should make this more general ... right now only works for constant mean, really
 def fit_model_to_data(deadhead_simulator, **kwargs):
+  covariance_name = kwargs.get('gp_covariance') or DEFAULT_COVARIANCE
+  covariance_class = ALL_COVARIANCES[covariance_name]
+  mean_function_name = kwargs.get('mean_function') or DEFAULT_MEAN_FUNCTION
+  mean_function_class = ALL_MEAN_FUNCTIONS[mean_function_name]
   noise_variance = form_noise_variance_from_simulator(deadhead_simulator)
+
+  def form_gaussian_process_from_hparams(y, hparams):
+    return form_gaussian_process(
+      hparams,
+      deadhead_simulator,
+      y,
+      noise_variance,
+      covariance_class,
+      mean_function_class,
+    )
+
   if not deadhead_simulator.num_calls_made:
-    return form_gaussian_process_from_hparams(DEFAULT_HPARAMS, deadhead_simulator, noise_variance, **kwargs)
+    return form_gaussian_process_from_hparams(numpy.zeros(deadhead_simulator.num_times), DEFAULT_COVARIANCE_HPARAMS)
 
-  de_maxiter = kwargs.get('de_maxiter') or DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER
 
-  # Come up with a noise_variance multiplier to attenuate this further?
-  # Something better than the "+1" strat to deal with zeros?
   def func(joint_vector):
     y = joint_vector[:deadhead_simulator.num_times]
     hparams = joint_vector[deadhead_simulator.num_times:]
-    gaussian_process = form_gaussian_process_from_hparams(hparams, deadhead_simulator, noise_variance, y, **kwargs)
+    gaussian_process = form_gaussian_process_from_hparams(y, hparams)
     predicted_distribution = norm(loc=0, scale=1).cdf(y)
 
     log_hyperprior = 0  # Eventually could do something cooler
@@ -72,11 +98,18 @@ def fit_model_to_data(deadhead_simulator, **kwargs):
 
     return -(log_hyperprior + log_gaussian_process_likelihood + log_binomial_likelihood)
 
-  bounds = numpy.array([[-2, 1]] * deadhead_simulator.num_times + DEFAULT_HPARAM_BOUNDS)
+  bounds = (
+    [[-2, 1]] * deadhead_simulator.num_times +  # y bounds
+    DEFAULT_COVARIANCE_HPARAM_BOUNDS +
+    mean_function_class.DEFAULT_HPARAM_BOUNDS
+  )
+
+  de_maxiter = kwargs.get('de_maxiter') or DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER
   result = differential_evolution(func, bounds, maxiter=de_maxiter)
   y = result.x[:deadhead_simulator.num_times]
   hparams = result.x[deadhead_simulator.num_times:]
-  return form_gaussian_process_from_hparams(hparams, deadhead_simulator, noise_variance, y, **kwargs)
+
+  return form_gaussian_process_from_hparams(y, hparams)
 
 
 def choose_next_call(gaussian_process, **kwargs):
