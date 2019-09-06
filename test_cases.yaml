@@ -1,0 +1,9 @@
+test_case_1:
+    deadhead_mean: 7.2
+    deadhead_variance: 0.9876
+test_case_2:
+    deadhead_mean: 5.4
+    deadhead_variance: 0.2
+test_case_3:
+    deadhead_mean: 8
+    deadhead_variance: 5

@@ -1,10 +1,10 @@
 import numpy
 from scipy.special import gamma as gamma_function
+from read_test_cases import read_test_case
 
 DEFAULT_MAX_CALLS = 50
 DEFAULT_DEADHEAD_TIMES = numpy.arange(3, 11)
-DEFAULT_DEADHEAD_MEAN = 7.2
-DEFAULT_DEADHEAD_VARIANCE = .9876
+DEFAULT_DEADHEAD_MEAN, DEFAULT_DEADHEAD_VARIANCE = read_test_case()
 
 
 class CallsExhaustedError(ValueError):
