@@ -1,5 +1,6 @@
 import numpy
 from scipy.linalg import cho_solve, cho_factor, solve_triangular, cholesky
+from scipy.stats import norm
 
 
 DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS = [.0987, .987]
@@ -24,6 +25,33 @@ class ConstantMean(object):
     assert len(args) == 1 and len(kwargs) == 0
     (x, ) = args
     return numpy.full_like(x, self.mean_value)
+
+
+class BellCurveMean(object):
+  def __init__(self, *args, **kwargs):
+    assert len(args) == 4 and len(kwargs) == 0
+    (loc, scale, min, max) = args
+    self.loc = loc
+    self.scale = scale
+    self.min = min
+    self.max = max
+
+  def __str__(self):
+    return f'BellCurve({self.loc, self.scale, self.min, self.max})'
+
+  def __call__(self, *args, **kwargs):
+    assert len(args) == 1 and len(kwargs) == 0
+    (x, ) = args
+    return numpy.exp(-(x - self.loc) ** 2 / self.scale ** 2) * (self.max - self.min) + self.min
+
+
+# Maybe shouldn't both having this because it requires this knowledge of the transformation externally
+class FixedBellCurveMean(BellCurveMean):
+  def __init__(self, *args, **kwargs):
+    assert len(args) == 2 and len(kwargs) == 0
+    (loc, scale) = args
+    min_val, max_val = norm(loc=0, scale=1).ppf([.2, .4])
+    super().__init__(self, loc, scale, min_val, max_val)
 
 
 # Could definitely clean this up
