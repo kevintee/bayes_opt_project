@@ -1,4 +1,5 @@
 import numpy
+from copy import deepcopy
 from scipy.special import gamma as gamma_function
 from read_test_cases import read_test_case
 
@@ -96,9 +97,33 @@ class DeadheadSimulator(object):
     self.num_calls_made += 1
     return result
 
+  def simulate_forced_call_result(self, deadhead_time, result):
+    try:
+      self.deadhead_call_predictions_by_deadhead_time[deadhead_time][self.num_calls_made] = result
+    except KeyError as e:
+      raise TimeNotRecognized from e
+    return self.simulate_call(deadhead_time)
+
   # Could be made more efficient by storing data as array rather than dict -- maybe worth considering
   def log_likelihood(self, predicted_distribution):
     return numpy.sum(
       self.deadhead_time_successes_counts * numpy.log(predicted_distribution) +
       self.deadhead_time_requests_counts * numpy.log(1 - predicted_distribution)
     )
+
+
+def duplicate_deadhead_simulator(deadhead_simulator):
+  assert isinstance(deadhead_simulator, DeadheadSimulator)
+  new_ds = DeadheadSimulator(deadhead_simulator.deadhead_times, deadhead_simulator.max_calls)
+
+  new_ds.deadhead_distribution = deepcopy(deadhead_simulator.deadhead_distribution)
+  new_ds.deadhead_call_predictions = deepcopy(deadhead_simulator.deadhead_call_predictions)
+  new_ds.deadhead_call_predictions_by_deadhead_time = deepcopy(deadhead_simulator.deadhead_call_predictions_by_deadhead_time)
+
+  new_ds.num_calls_made = deepcopy(deadhead_simulator.num_calls_made)
+  new_ds.deadhead_times_requested = deepcopy(deadhead_simulator.deadhead_times_requested)
+  new_ds.deadhead_time_requests_responses = deepcopy(deadhead_simulator.deadhead_time_requests_responses)
+  new_ds.deadhead_time_requests_counts = deepcopy(deadhead_simulator.deadhead_time_requests_counts)
+  new_ds.deadhead_time_successes_counts = deepcopy(deadhead_simulator.deadhead_time_successes_counts)
+
+  return new_ds
