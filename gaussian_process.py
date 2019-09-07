@@ -36,6 +36,9 @@ class ConstantMean(object):
     (x, ) = args
     return numpy.full_like(x, self.mean_value)
 
+  def recover_tunable_values_for_initial_guess(self):
+    return numpy.array([self.mean_value])
+
 
 class ZeroMean(ConstantMean):
   name = 'zero'
@@ -44,6 +47,9 @@ class ZeroMean(ConstantMean):
   def __init__(self, *args, **kwargs):
     assert len(args) == 0 and len(kwargs) == 0
     super().__init__(0.0)
+
+  def recover_tunable_values_for_initial_guess(self):
+    return numpy.array([])
 
 
 class BellCurveMean(object):
@@ -72,6 +78,9 @@ class BellCurveMean(object):
     (x, ) = args
     return numpy.exp(-(x - self.loc) ** 2 / self.scale ** 2) * (self.max - self.min) + self.min
 
+  def recover_tunable_values_for_initial_guess(self):
+    return numpy.array([self.loc, self.scale, self.min, self.max])
+
 
 # Maybe shouldn't both having this because it requires this knowledge of the transformation externally
 class FixedBellCurveMean(BellCurveMean):
@@ -87,6 +96,9 @@ class FixedBellCurveMean(BellCurveMean):
     (loc, scale) = args
     min_val, max_val = norm(loc=0, scale=1).ppf([.2, .4])
     super().__init__(loc, scale, min_val, max_val)
+
+  def recover_tunable_values_for_initial_guess(self):
+    return numpy.array([self.loc, self.scale])
 
 
 # Could definitely clean this up
@@ -185,6 +197,14 @@ class GaussianProcess(object):
   @property
   def num_sampled(self):
     return len(self.y)
+
+  # Should probably formalize this structure somewhere: length_scale, process_variance, *mean_function_args = hparams
+  def recover_tunable_values_for_initial_guess(self):
+    return numpy.concatenate((
+      self.y,
+      [self.covariance.length_scale, self.process_variance],
+      self.mean_function.recover_tunable_values_for_initial_guess(),
+    ))
 
   # Could reorg normals to not require transpose -- will decide if I care about it eventually
   def posterior_draws(self, num_draws):

@@ -24,6 +24,7 @@ def initialize():
   parser.add_argument('--opt-mc-draws', type=int, required=False)
   parser.add_argument('--ucb-percentile', type=float, required=False)
   parser.add_argument('--aei-percentile', type=float, required=False)
+  parser.add_argument('--kg-percentile', type=float, required=False)
   parser.add_argument('--gp-covariance', type=str, required=False, choices=ALL_COVARIANCES)
   parser.add_argument('--mean-function', type=str, required=False, choices=ALL_MEAN_FUNCTIONS)
   args = parser.parse_args()
