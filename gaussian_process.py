@@ -2,8 +2,7 @@ import numpy
 from scipy.linalg import cho_solve, cho_factor, solve_triangular, cholesky
 from scipy.stats import norm
 
-
-DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS = [.0987, .987]
+# In reality, probably should either be owned in the class or stored in a separate file ... whatever
 DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS = [.0432, .9012]
 DEFAULT_CONSTANT_MEAN_HPARAM_BOUNDS = [-1.23, 1.098]
 DEFAULT_BELL_CURVE_LOC_HPARAM_BOUNDS = [3.0, 10.0]
@@ -11,7 +10,8 @@ DEFAULT_BELL_CURVE_SCALE_HPARAM_BOUNDS = [.4321, 4.321]
 DEFAULT_BELL_CURVE_MIN_HPARAM_BOUNDS = [-2.345, -.4321]
 DEFAULT_BELL_CURVE_MAX_HPARAM_BOUNDS = [-.4567, .8765]
 
-DEFAULT_LENGTH_SCALE = .567
+DEFAULT_GAUSSIAN_COVARIANCE_LENGTH_SCALE = 0.987
+DEFAULT_CINF_CHEB_COVARIANCE_LENGTH_SCALE = 0.456
 DEFAULT_PROCESS_VARIANCE = .876
 
 DEFAULT_CONSTANT_MEAN_ARGS = (-.543, )
@@ -104,9 +104,10 @@ class FixedBellCurveMean(BellCurveMean):
 # Could definitely clean this up
 class GaussianCovariance(object):
   name = 'gaussian'
+  DEFAULT_LENGTH_SCALE_BOUNDS = [.4321, 4.321]
 
-  def __init__(self, length_scale):
-    self.length_scale = length_scale
+  def __init__(self, length_scale=None):
+    self.length_scale = length_scale or DEFAULT_GAUSSIAN_COVARIANCE_LENGTH_SCALE
 
   def __str__(self):
     return f'Gaussian({self.length_scale})'
@@ -123,9 +124,10 @@ class GaussianCovariance(object):
 # I also have hard-coded in the [3, 10] domain right now ... would need to deal with that eventually
 class CInfinityChebyshevCovariance(object):
   name = 'cinf-cheb'
+  DEFAULT_LENGTH_SCALE_BOUNDS = [.1234, .8765]
 
-  def __init__(self, length_scale, parameter_a=1):
-    self.length_scale = length_scale
+  def __init__(self, length_scale=None, parameter_a=1):
+    self.length_scale = length_scale or DEFAULT_CINF_CHEB_COVARIANCE_LENGTH_SCALE
     self.parameter_a = parameter_a
 
   def __str__(self):
