@@ -5,16 +5,10 @@ from scipy.optimize import differential_evolution, minimize
 from gaussian_process import (
   GaussianProcess, GaussianCovariance, CInfinityChebyshevCovariance,
   ZeroMean, ConstantMean, BellCurveMean, FixedBellCurveMean,
-  DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE,
-  DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
+  DEFAULT_PROCESS_VARIANCE, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
 )
 from deadhead_simulator import duplicate_deadhead_simulator
 
-DEFAULT_COVARIANCE_HPARAMS = (DEFAULT_LENGTH_SCALE, DEFAULT_PROCESS_VARIANCE)
-DEFAULT_COVARIANCE_HPARAM_BOUNDS = [
-  DEFAULT_LENGTH_SCALE_HPARAM_BOUNDS,
-  DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
-]
 
 DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 16
 DEFAULT_UCB_PERCENTILE = 75  # The time with the highest value of this percentile gets the next selection
@@ -80,7 +74,8 @@ def fit_model_to_data(deadhead_simulator, current_gaussian_process=None, **kwarg
     )
 
   if not deadhead_simulator.num_calls_made:
-    return form_gaussian_process_from_hparams(numpy.zeros(deadhead_simulator.num_times), DEFAULT_COVARIANCE_HPARAMS)
+    default_hparams = [None, DEFAULT_PROCESS_VARIANCE]
+    return form_gaussian_process_from_hparams(numpy.zeros(deadhead_simulator.num_times), default_hparams)
 
   def func(joint_vector):
     y = joint_vector[:deadhead_simulator.num_times]
@@ -96,7 +91,8 @@ def fit_model_to_data(deadhead_simulator, current_gaussian_process=None, **kwarg
 
   bounds = (
     [[-2, 1]] * deadhead_simulator.num_times +  # y bounds
-    DEFAULT_COVARIANCE_HPARAM_BOUNDS +
+    [covariance_class.DEFAULT_LENGTH_SCALE_BOUNDS] +
+    [DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS] +
     mean_function_class.DEFAULT_HPARAM_BOUNDS
   )
 
