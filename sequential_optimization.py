@@ -3,7 +3,7 @@ from scipy.stats import norm
 from scipy.optimize import differential_evolution, minimize
 
 from gaussian_process import (
-  GaussianProcess, GaussianCovariance, CInfinityChebyshevCovariance,
+  GaussianProcess, GaussianCovariance, CInfinityChebyshevCovariance, DiagonalCovariance,
   ZeroMean, ConstantMean, BellCurveMean, FixedBellCurveMean,
   DEFAULT_PROCESS_VARIANCE, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
 )
@@ -26,7 +26,7 @@ ALL_STRATS = [STRAT_UCB, STRAT_THOMPSON_SAMPLING, STRAT_EI, STRAT_ENTROPY_SEARCH
 DEFAULT_STRAT = STRAT_THOMPSON_SAMPLING
 DEFAULT_MC_DRAWS = 1000
 
-ALL_COVARIANCES = {x.name: x for x in (GaussianCovariance, CInfinityChebyshevCovariance)}
+ALL_COVARIANCES = {x.name: x for x in (GaussianCovariance, CInfinityChebyshevCovariance, DiagonalCovariance)}
 DEFAULT_COVARIANCE = GaussianCovariance.name
 
 ALL_MEAN_FUNCTIONS = {x.name: x for x in (ZeroMean, ConstantMean, BellCurveMean, FixedBellCurveMean)}

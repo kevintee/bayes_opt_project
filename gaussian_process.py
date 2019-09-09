@@ -118,6 +118,26 @@ class GaussianCovariance(object):
     return numpy.exp(-distance_matrix_squared / self.length_scale ** 2)
 
 
+# Could definitely clean this up
+class DiagonalCovariance(object):
+  name = 'diagonal'
+  DEFAULT_LENGTH_SCALE_BOUNDS = [.001, .001]
+
+  def __init__(self, length_scale=None):
+    self.length_scale = length_scale or .001  # Totally irrelevant for this problem
+
+  def __str__(self):
+    return f'Gaussian({self.length_scale})'
+
+  def evaluate_kernel_matrix(self, x_centers, x_eval=None):
+    if x_eval is None:
+      return numpy.eye(len(x_centers))
+
+    x_eval = x_centers if x_eval is None else x_eval
+    distance_matrix_squared = (x_eval[:, None] - x_centers[None, :]) ** 2
+    return numpy.exp(-distance_matrix_squared / self.length_scale ** 2)
+
+
 # Using the idea of b = 1 - length_scale to more closely match the length_scale idea in the Gaussian
 # Don't have a great way of thinking about a, but want to leave it floating around, I guess
 # It is a potentially very interesting parameter, but I just don't have a perfect sense of it right now
