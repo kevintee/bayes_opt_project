@@ -121,7 +121,7 @@ class GaussianCovariance(object):
 # Could definitely clean this up
 class DiagonalCovariance(object):
   name = 'diagonal'
-  DEFAULT_LENGTH_SCALE_BOUNDS = [.001, .001]
+  DEFAULT_LENGTH_SCALE_BOUNDS = [.001, .0011]
 
   def __init__(self, length_scale=None):
     self.length_scale = length_scale or .001  # Totally irrelevant for this problem
