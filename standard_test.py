@@ -5,6 +5,7 @@ import os
 import time
 
 from deadhead_simulator import DeadheadSimulator, DEFAULT_DEADHEAD_MEAN, DEFAULT_DEADHEAD_VARIANCE
+from read_test_cases import read_test_case
 from sequential_optimization import run_bayesopt, ALL_STRATS, ALL_COVARIANCES, ALL_MEAN_FUNCTIONS
 
 
@@ -28,6 +29,7 @@ def initialize():
   parser.add_argument('--gp-covariance', type=str, required=False, choices=ALL_COVARIANCES)
   parser.add_argument('--mean-function', type=str, required=False, choices=ALL_MEAN_FUNCTIONS)
   parser.add_argument('--init-cycles', type=int, required=False, default=0)
+  parser.add_argument('--test-case', type=int, required=False)
   args = parser.parse_args()
 
   return args
@@ -92,10 +94,15 @@ def main():
   args = initialize()
   output_file = args.output_file or f'{time.time()}_{args.max_calls}.json'
 
+  if args.test_case:
+    gamma_deadhead_mean, gamma_deadhead_variance = read_test_case(f'test_case_{args.test_case}')
+  else:
+    gamma_deadhead_mean, gamma_deadhead_variance = args.gamma_mean, args.gamma_variance
+
   deadhead_simulator = DeadheadSimulator(max_calls=args.max_calls)
   deadhead_simulator.generate_gamma_deadhead_distribution(
-    deadhead_mean=args.gamma_mean,
-    deadhead_variance=args.gamma_variance,
+    deadhead_mean=gamma_deadhead_mean,
+    deadhead_variance=gamma_deadhead_variance,
   )
   write_results(output_file, deadhead_simulator, args.init_cycles, create_file=True)
   start = time.time()
