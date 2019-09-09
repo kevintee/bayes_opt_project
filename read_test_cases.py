@@ -1,7 +1,7 @@
 import yaml
 
 
-def read_test_case(name='test_case_1'):
+def read_test_case(name):
     with open('test_cases.yaml') as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
     parameters = data[name]
