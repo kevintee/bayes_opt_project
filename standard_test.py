@@ -27,12 +27,20 @@ def initialize():
   parser.add_argument('--kg-percentile', type=float, required=False)
   parser.add_argument('--gp-covariance', type=str, required=False, choices=ALL_COVARIANCES)
   parser.add_argument('--mean-function', type=str, required=False, choices=ALL_MEAN_FUNCTIONS)
+  parser.add_argument('--init-cycles', type=int, required=False, default=0)
   args = parser.parse_args()
 
   return args
 
 
-def write_results(output_file, deadhead_simulator, create_file=False, answer=None, gaussian_process=None):
+def write_results(
+  output_file,
+  deadhead_simulator,
+  init_cycles,
+  create_file=False,
+  answer=None,
+  gaussian_process=None,
+):
   if create_file:
     if os.path.isfile(output_file):
       raise AssertionError(f'File {output_file} already exists!')
@@ -58,6 +66,7 @@ def write_results(output_file, deadhead_simulator, create_file=False, answer=Non
     new_results['answer'] = float(answer)  # Casting for json
   if gaussian_process is not None:
     new_results['gaussian_process'] = gaussian_process.json_info
+  new_results['initialization_cycles'] = int(init_cycles)
 
   info['results'].append(new_results)
 
@@ -74,9 +83,11 @@ def form_next_call_kwargs(args):
     'aei_percentile': args.aei_percentile,
     'gp_covariance': args.gp_covariance,
     'mean_function': args.mean_function,
+    'init_cycles': args.init_cycles,
   }
 
 
+# Init cycles could be better organized
 def main():
   args = initialize()
   output_file = args.output_file or f'{time.time()}_{args.max_calls}.json'
@@ -86,7 +97,7 @@ def main():
     deadhead_mean=args.gamma_mean,
     deadhead_variance=args.gamma_variance,
   )
-  write_results(output_file, deadhead_simulator, create_file=True)
+  write_results(output_file, deadhead_simulator, args.init_cycles, create_file=True)
   start = time.time()
   for k in range(args.num_tests):
     if args.verbosity:
@@ -98,7 +109,7 @@ def main():
       **form_next_call_kwargs(args),
     )
     answer = deadhead_simulator.deadhead_times[numpy.argmax(gaussian_process.y)]
-    write_results(output_file, deadhead_simulator, answer=answer, gaussian_process=gaussian_process)
+    write_results(output_file, deadhead_simulator, args.init_cycles, answer=answer, gaussian_process=gaussian_process)
     if args.verbosity:
       now = time.time()
       print(f'\tTrial {k} complete, elapsed time: {now - start:.2f} seconds')

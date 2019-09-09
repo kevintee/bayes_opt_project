@@ -7,7 +7,7 @@ from gaussian_process import (
   ZeroMean, ConstantMean, BellCurveMean, FixedBellCurveMean,
   DEFAULT_PROCESS_VARIANCE, DEFAULT_PROCESS_VARIANCE_HPARAM_BOUNDS,
 )
-from deadhead_simulator import duplicate_deadhead_simulator
+from deadhead_simulator import duplicate_deadhead_simulator, CallsExhaustedError
 
 
 DEFAULT_DIFFERENTIAL_EVOLUTION_MAXITER = 16
@@ -149,8 +149,22 @@ def choose_next_call(deadhead_simulator, gaussian_process, **kwargs):
   return gaussian_process.x[numpy.argmax(acquisition_function_values)]
 
 
+def initialization(deadhead_simulator, **kwargs):
+  init_cycles = kwargs['init_cycles']
+  for _ in range(init_cycles):
+    for initialization_time in deadhead_simulator.deadhead_times:
+      try:
+        deadhead_simulator.simulate_call(float(initialization_time))
+      except CallsExhaustedError:
+        return
+
+
 def run_bayesopt(deadhead_simulator, verbose=True, **kwargs):
-  for call in range(deadhead_simulator.max_calls):
+  initialization(deadhead_simulator, **kwargs)
+  num_initialization_calls = deadhead_simulator.num_calls_made
+  if verbose:
+    print(f'Initialization of {num_initialization_calls} conducted through grid search')
+  for call in range(num_initialization_calls, deadhead_simulator.max_calls):
     gaussian_process = fit_model_to_data(deadhead_simulator, **kwargs)
     next_deadhead_time = choose_next_call(deadhead_simulator, gaussian_process, **kwargs)
     deadhead_simulator.simulate_call(next_deadhead_time)
