@@ -1,7 +1,6 @@
 import numpy
 from copy import deepcopy
 from scipy.special import gamma as gamma_function
-from read_test_cases import read_test_case
 
 DEFAULT_MAX_CALLS = 50
 DEFAULT_DEADHEAD_TIMES = numpy.arange(3, 11)
@@ -46,6 +45,11 @@ class DeadheadSimulator(object):
     self.deadhead_time_requests_responses = []
     self.deadhead_time_requests_counts = numpy.zeros_like(self.deadhead_times)
     self.deadhead_time_successes_counts = numpy.zeros_like(self.deadhead_times)
+
+  def highest_performing_times(self):
+    results = self.deadhead_time_successes_counts / (self.deadhead_time_requests_counts + 1e-10)
+    winning_indices = numpy.where(results == max(results))[0]
+    return self.deadhead_times[winning_indices]
 
   @property
   def num_times(self):
