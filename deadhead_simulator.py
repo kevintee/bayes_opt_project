@@ -86,7 +86,7 @@ class DeadheadSimulator(object):
     if self.deadhead_call_predictions_by_deadhead_time is None:
       raise SimulatorNotPrepared('construct_predictions has not been called yet')
     if self.num_calls_made >= self.max_calls:
-      return CallsExhaustedError('All calls already conducted')
+      raise CallsExhaustedError('All calls already conducted')
 
     try:
       result = self.deadhead_call_predictions_by_deadhead_time[deadhead_time][self.num_calls_made]

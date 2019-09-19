@@ -75,3 +75,4 @@ def run_one_osub_baseline_trial(deadhead_simulator):
     time_index = o.select_next_arm()
     result = deadhead_simulator.simulate_call(float(deadhead_simulator.deadhead_times[time_index]))
     o.update_state(time_index, result)
+  assert deadhead_simulator.num_calls_made == deadhead_simulator.max_calls

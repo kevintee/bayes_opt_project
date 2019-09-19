@@ -13,6 +13,7 @@ def run_one_baseline_trial(deadhead_simulator, baseline_name):
 
   if baseline_name == LSE_NAME:  # Limited for now
     assert numpy.array_equal(deadhead_simulator.deadhead_times, numpy.arange(3, 11))
+    run_one_lse_baseline_trial(deadhead_simulator)
   elif baseline_name == OSUB_NAME:
     run_one_osub_baseline_trial(deadhead_simulator)
 
