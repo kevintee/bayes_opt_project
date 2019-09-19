@@ -3,8 +3,6 @@ from deadhead_simulator import CallsExhaustedError
 
 LSE_NAME = 'lse'
 
-# Shouldn't actually use this, just copying it here for a moment
-
 # This is required at the moment -- can eventually do something more flexible
 REQUIRED_MAX_CALLS = 50
 REQUIRED_DEADHEAD_TIMES = numpy.arange(3, 11)
