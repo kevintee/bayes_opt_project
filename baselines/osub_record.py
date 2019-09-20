@@ -1,9 +1,10 @@
-#  This is what was run as a baseline -- could convert it into our format eventually
-
-from scipy.special import gamma as gamma_function
 import numpy
 
 
+OSUB_NAME = 'osub'
+
+
+# Adapted from Junpei's C++ code ... we should get the names synced up with the rest of the code base
 class OSUBPolicy(object):
   def __init__(self, K):
     self.gamma = 2
@@ -68,42 +69,10 @@ class OSUBPolicy(object):
     self.Gi[k] += float(r)
 
 
-# The actual running component is below -- should be boxed up but I'm just saving it here for now
-
-deadhead_means = (7.2, 5.4, 8)
-deadhead_variances = (0.9876, .2, 5)
-deadhead_times = numpy.arange(3, 11)
-hist_buckets = numpy.arange(3, 12) - .5
-
-max_calls = 50
-num_tries = 200
-
-for deadhead_mean, deadhead_variance in zip(deadhead_means, deadhead_variances):
-  wins = []
-  gaps = []
-
-  beta = deadhead_mean / deadhead_variance
-  alpha = deadhead_mean * beta
-  mode = (alpha - 1) / beta
-
-
-  def yf_unnorm(x):  # Should log space for safety??
-    return beta ** alpha / gamma_function(alpha) * x ** (alpha - 1) * numpy.exp(-beta * x)
-
-  deadhead_distribution = yf_unnorm(deadhead_times) / yf_unnorm(mode) * .2 + .2
-
-  for now in range(num_tries):
-    calls = numpy.random.random(max_calls)
-    o = OSUBPolicy(len(deadhead_times))
-    for call_count in range(max_calls):
-      time_index = o.select_next_arm()
-      result = calls[call_count] < deadhead_distribution[time_index]
-      o.update_state(time_index, result)
-
-    results = o.Gi / (o.Ni + 1e-10)
-    winning_indices = numpy.where(results == max(results))[0]
-    winning_index = numpy.random.choice(winning_indices)
-    wins.append(deadhead_times[winning_index])
-    gaps.append(max(deadhead_distribution) - deadhead_distribution[winning_index])
-
-  print(numpy.mean(gaps), numpy.std(gaps), numpy.percentile(gaps, 25), numpy.percentile(gaps, 75))
+def run_one_osub_baseline_trial(deadhead_simulator):
+  o = OSUBPolicy(deadhead_simulator.num_times)
+  for call_count in range(deadhead_simulator.max_calls):
+    time_index = o.select_next_arm()
+    result = deadhead_simulator.simulate_call(float(deadhead_simulator.deadhead_times[time_index]))
+    o.update_state(time_index, result)
+  assert deadhead_simulator.num_calls_made == deadhead_simulator.max_calls
